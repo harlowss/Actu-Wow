@@ -1,14 +1,27 @@
-import os, json, requests
-import xml.etree.ElementTree as ET
+import os, json, re, html, requests
 
-URL = "https://news.blizzard.com/fr-fr/feed/world-of-warcraft"
+URLS = [
+    "https://news.blizzard.com/fr-fr/feed/world-of-warcraft",
+    "https://news.blizzard.com/en-us/feed/world-of-warcraft",
+]
 WEBHOOK = os.environ["DISCORD_WEBHOOK"]
 FICHIER = "seen.json"
 
-xml = requests.get(URL, headers={"User-Agent": "Mozilla/5.0"}, timeout=30).content
-items = ET.fromstring(xml).findall(".//item")
-actus = [(i.findtext("link"), i.findtext("title")) for i in items]
-print(f"{len(actus)} actus trouvées")
+def nettoie(t):
+    t = re.sub(r"<!\[CDATA\[(.*?)\]\]>", r"\1", t or "", flags=re.S)
+    return html.unescape(t).strip()
+
+actus = []
+for url in URLS:
+    texte = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=30).text
+    for bloc in re.findall(r"<item>(.*?)</item>", texte, flags=re.S):
+        titre = re.search(r"<title>(.*?)</title>", bloc, flags=re.S)
+        lien = re.search(r"<link>(.*?)</link>", bloc, flags=re.S)
+        if titre and lien:
+            actus.append((nettoie(lien.group(1)), nettoie(titre.group(1))))
+    print(f"{url} : {len(actus)} actus trouvées")
+    if actus:
+        break
 
 vus = json.load(open(FICHIER)) if os.path.exists(FICHIER) else []
 premier_lancement = len(vus) == 0
