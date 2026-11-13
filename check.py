@@ -14,9 +14,10 @@ def nettoie(t):
 actus = []
 for url in URLS:
     texte = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=30).text
-    for bloc in re.findall(r"<item>(.*?)</item>", texte, flags=re.S):
-        titre = re.search(r"<title>(.*?)</title>", bloc, flags=re.S)
-        lien = re.search(r"<link>(.*?)</link>", bloc, flags=re.S)
+    print("Début du flux :", texte[:300])
+    for bloc in re.findall(r"<(?:item|entry)\b.*?>(.*?)</(?:item|entry)>", texte, flags=re.S):
+        titre = re.search(r"<title[^>]*>(.*?)</title>", bloc, flags=re.S)
+        lien = re.search(r'<link[^>]*href="([^"]+)"', bloc) or re.search(r"<link>(.*?)</link>", bloc, flags=re.S)
         if titre and lien:
             actus.append((nettoie(lien.group(1)), nettoie(titre.group(1))))
     print(f"{url} : {len(actus)} actus trouvées")
